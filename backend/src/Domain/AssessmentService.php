@@ -59,8 +59,19 @@ class AssessmentService
     public function getProgressAndScore(AssessmentInstance $instance): array
     {
         $answers = $this->assessmentRepository->findAllAssessmentInstanceAnswers($instance);
-        $questions = $instance->getSession()->getAssessment()?->getQuestions()->toArray() ?? [];
-        $assessmentElement = $instance->getSession()->getAssessment()?->getElement();
+
+        $session = $instance->getSession();
+        if (!$session) {
+            throw new \RuntimeException('AssessmentInstance has no session.');
+        }
+
+        $assessment = $session->getAssessment();
+        if (!$assessment) {
+            throw new \RuntimeException('AssessmentSession has no assessment.');
+        }
+
+        $questions = $assessment->getQuestions()->toArray() ?? [];
+        $assessmentElement = $assessment->getElement();
 
         $totalQuestions = count($questions);
 
@@ -104,14 +115,7 @@ class AssessmentService
             foreach ($elementQuestions as $question) {
                 $questionId = $question->getId();
                 $answer = $answersByQuestion[$questionId] ?? null;
-
-                $options = $this->assessmentRepository->findAssessmentAnswerOptionsByQuestion($question);
                 $questionMaxScore = 0;
-                if (!empty($options)) {
-                    $questionMaxScore = max(array_map(fn($option) => $option->getValue(), $options));
-                    $elementMaxScore += $questionMaxScore;
-                    $maxScore += $questionMaxScore;
-                }
 
                 $questionData = [
                     'question_id' => $questionId,
@@ -131,8 +135,30 @@ class AssessmentService
                     'numeric_value' => $answer?->getNumericValue(),
                 ];
 
+                // Skip reflection questions for scoring
+                if ($question->getIsReflection()) {
+                    $elementQuestionAnswersData[] = $questionData;
+                    $questionAnswersData[] = $questionData;
+                    continue;
+                }
+
+                $options = $this->assessmentRepository->findAssessmentAnswerOptionsByQuestion($question);
+                $questionMaxScore = 0;
+                if (!empty($options)) {
+                    $questionMaxScore = max(array_map(fn($option) => $option->getValue(), $options));
+                    $elementMaxScore += $questionMaxScore;
+                    $maxScore += $questionMaxScore;
+                }
+
+                $questionData['max_score'] = $questionMaxScore;
+
                 if ($answer && $answer->getAssessmentAnswerOption()) {
                     $answerOption = $answer->getAssessmentAnswerOption();
+
+                    if ($answerOption->getAssessmentQuestion()->getId() !== $questionId) {
+                        continue;
+                    }
+                    
                     $questionData['answer_value'] = $answerOption->getValue();
                     $questionData['answer_text'] = $answerOption->getAnswer();
                     $questionData['answer_option_id'] = $answerOption->getId();
