@@ -20,6 +20,30 @@ class AssessmentRepository extends EntityRepository
             ->find($id);
     }
 
+    public function findQuestionById(string $id): ?AssessmentQuestion
+    {
+        return $this->getEntityManager()
+            ->getRepository(AssessmentQuestion::class)
+            ->find($id);
+    }
+
+    public function saveAnswer(AssessmentAnswer $answer, bool $flush = true): void
+    {
+        $em = $this->getEntityManager();
+        $em->persist($answer);
+
+        if ($flush) {
+            $em->flush();
+        }
+    }
+
+    public function findAnswerOptionById(string $id): ?AssessmentAnswerOption
+    {
+        return $this->getEntityManager()
+            ->getRepository(AssessmentAnswerOption::class)
+            ->find($id);
+    }
+
     public function findAllAssessmentInstanceAnswers(AssessmentInstance $instance): array
     {
         $qb = $this->getEntityManager()

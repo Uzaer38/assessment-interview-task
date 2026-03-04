@@ -4,6 +4,14 @@ declare(strict_types=1);
 
 namespace App\Domain;
 
+use InvalidArgumentException;
+use RuntimeException;
+use App\Domain\AssessmentAnswerOption;
+use App\Domain\AssessmentQuestion;
+use App\Domain\AssessmentInstance;
+use App\Domain\AssessmentRepository;
+use App\Domain\AssessmentAnswer;
+
 class AssessmentService
 {
     private AssessmentRepository $assessmentRepository;
@@ -279,5 +287,91 @@ class AssessmentService
         }
 
         return $insights;
+    }
+
+    public function submitAnswer(array $data): array {
+
+        if (!is_array($data)) {
+            throw new \InvalidArgumentException('Invalid JSON body.');
+        }
+        
+        $instanceId = isset($data['instance_id']) ? (string) $data['instance_id'] : null;
+        $questionId = isset($data['question_id']) ? (string) $data['question_id'] : null;
+        $answerOptionId = isset($data['answer_option_id']) ? (string) $data['answer_option_id'] : null;
+        $textAnswer = isset($data['text_answer']) ? (string) $data['text_answer'] : null;
+        $numericValue = isset($data['numeric_value']) ? (int) $data['numeric_value'] : null;
+        
+        if (!$instanceId || !$questionId) {
+            throw new \InvalidArgumentException('instance_id and question_id are required.');
+        }
+
+        $instance = $this->assessmentRepository->findAssessmentInstanceById($instanceId);
+        if (!$instance) {
+            throw new \RuntimeException('Assessment instance not found');
+        }
+
+        $question = $this->assessmentRepository->findQuestionById($questionId);
+        if (!$question) {
+            throw new \RuntimeException('Question not found');
+        }
+
+        $session = $instance->getSession();
+        if (!$session) {
+            throw new \RuntimeException('AssessmentInstance has no session.');
+        }
+
+        $assessment = $session->getAssessment();
+        if (!$assessment) {
+            throw new \RuntimeException('AssessmentSession has no assessment.');
+        }
+
+        $belongs = $assessment->getQuestions()->contains($question);
+        if (!$belongs) {
+            throw new \InvalidArgumentException('Question does not belong to this assessment.');
+        }
+
+        $isReflection = (bool) ($question->getIsReflection() ?? false);
+        if ($isReflection) {
+            if (!is_string($textAnswer) || trim($textAnswer) === '') {
+                throw new \InvalidArgumentException('text_answer is required for reflection questions.');
+            }
+        
+            if ($answerOptionId !== null) {
+                throw new \InvalidArgumentException('answer_option_id must be null for reflection questions.');
+            }
+        }
+
+        if (!$isReflection) {
+            if (!is_string($answerOptionId) || trim($answerOptionId) === '') {
+                throw new \InvalidArgumentException('answer_option_id is required for likert questions.');
+            }
+        
+            if ($textAnswer !== null) {
+                throw new \InvalidArgumentException('text_answer must be null for likert questions.');
+            }
+        }
+
+        $answerOption = null;
+        if ($answerOptionId) {
+            $answerOption = $this->assessmentRepository->findAnswerOptionById($answerOptionId);
+            if (!$answerOption) {
+                throw new \RuntimeException('Answer option not found');
+            }
+            if ($answerOption->getAssessmentQuestion()->getId() !== $questionId) {
+                throw new \InvalidArgumentException('Answer option does not belong to this question.');
+            }
+        }
+
+        $answer = new AssessmentAnswer(
+            id: null,
+            assessmentInstance: $instance,
+            assessmentAnswerOption: $answerOption,
+            textAnswer: $textAnswer,
+            numericValue: $numericValue
+        );
+
+        $this->assessmentRepository->saveAnswer($answer);
+
+        return ['status' => 'created'];
     }
 }
