@@ -114,30 +114,33 @@ Accepts a JSON request body containing:
 ### Implementation details
 
 U AssessmentAnswersController
-    - Implemented new controller for handling AssessmentAnswers
-    - Fed in the AssessmentService through the construct function
-    - Implemented submitAnswer controller function referencing the new POST endpoint
-    - submitAnswer function calls the function of the same name in AssessmentService
+
+  - Implemented new controller for handling AssessmentAnswers
+  - Fed in the AssessmentService through the construct function
+  - Implemented submitAnswer controller function referencing the new POST endpoint
+  - submitAnswer function calls the function of the same name in AssessmentService
 
 M AssessmentRepository.php
-    - Implemented 3 helper functions to be referenced by submitAnswer, to provide EntityManager access
-    - findQuestionById returns the AssessmentQuestion with the corresponding id
-    - findAnswerOptionById returns the AssessmentAnswerOption with the corresponding id
-    - saveAnswer persists the new answer and then flushes the EM
+
+  - Implemented 3 helper functions to be referenced by submitAnswer, to provide EntityManager access
+  - findQuestionById returns the AssessmentQuestion with the corresponding id
+  - findAnswerOptionById returns the AssessmentAnswerOption with the corresponding id
+  - saveAnswer persists the new answer and then flushes the EM
 
 M AssessmentService.php
-    - Implemented submitAnswer function business logic
-    - First validates the payload type and nullness
-    - Then gets the question and assessment instance, throws error if they don't exist
-    - Fetches session and assessment from instance, throws error if they don't exist
-    - Throws error if question does not belong to the assessment
-    - Retrieves the bool for whether the question is reflection or likert
-        - If reflection, then throws error if there is an answerOptionId provided, or if there is no textAnswer provided
-        - Vice versa for likert questions
-    - Fetches the answerOption for the corresponding id, throws error if there is no corresponding option or if the option doesn't belong to the question
-    - Builds a new AssessmentAnswer, passing in the validated instance, answer option, text answer and numeric value to the construct method of the AssessmentAnswer class
-    - Calls the saveAnswer method in AssessmentRepository and passes in the new AssessmentAnswer
-    - Returns a 'status => created' message if the function reaches the end without error.
+
+  - Implemented submitAnswer function business logic
+  - First validates the payload type and nullness
+  - Then gets the question and assessment instance, throws error if they don't exist
+  - Fetches session and assessment from instance, throws error if they don't exist
+  - Throws error if question does not belong to the assessment
+  - Retrieves the bool for whether the question is reflection or likert
+    - If reflection, then throws error if there is an answerOptionId provided, or if there is no textAnswer provided
+    - Vice versa for likert questions
+  - Fetches the answerOption for the corresponding id, throws error if there is no corresponding option or if the option doesn't belong to the question
+  - Builds a new AssessmentAnswer, passing in the validated instance, answer option, text answer and numeric value to the construct method of the AssessmentAnswer class
+  - Calls the saveAnswer method in AssessmentRepository and passes in the new AssessmentAnswer
+  - Returns a 'status => created' message if the function reaches the end without error.
 
 
 ### Test Results
