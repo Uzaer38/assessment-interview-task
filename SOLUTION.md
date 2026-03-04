@@ -4,7 +4,7 @@
 
 ### Entity Relationship Diagram
 
-![Assessment ERD](public/erd.png)
+![Assessment ERD](backend/public/erd.png)
 
 ### Diagram Description
 
